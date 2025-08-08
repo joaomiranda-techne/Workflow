@@ -1,0 +1,125 @@
+name: Auto Pull Request e Merge
+
+on:
+  push:
+    branches:
+      - main
+      - development
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create_and_merge_pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.ref }}
+          repository: ${{ github.repository }}
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Buscar branches necessárias
+        run: |
+          git fetch --all
+          git fetch origin ambiente-1:refs/remotes/origin/ambiente-1 || echo "Branch ambiente-1 não existe no remoto."
+          git fetch origin ambiente-2:refs/remotes/origin/ambiente-2 || echo "Branch ambiente-2 não existe no remoto."
+          git fetch origin ambiente-3:refs/remotes/origin/ambiente-3 || echo "Branch ambiente-3 não existe no remoto."          
+
+      - name: Instalar GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+          echo "${{ secrets.PAT_TOKEN }}" | gh auth login --with-token
+
+      # MAIN -> DEVELOPMENT
+      - name: Criar e mesclar PR da main -> development
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if git log origin/development..origin/main --oneline | grep .; then
+            PR_URL=$(gh pr create \
+              --base development \
+              --head main \
+              --title "Merge automático: main -> development" \
+              --body "Merge automático gerado pelo GitHub Actions." \
+              || true)
+
+            if [ -n "$PR_URL" ]; then
+              gh pr merge "$PR_URL" --merge --admin || echo "Não foi possível mesclar automaticamente."
+            fi
+          else
+            echo "Nenhuma alteração para mesclar de main -> development."
+          fi
+
+      # DEVELOPMENT -> Ambiente-1
+      - name: Criar e mesclar PR da development -> ambiente-1
+        if: github.ref == 'refs/heads/development'
+        run: |
+          if git rev-parse origin/ambiente-1 >/dev/null 2>&1; then
+            if git log origin/ambiente-1..origin/development --oneline | grep .; then
+              PR_URL=$(gh pr create \
+                --base ambiente-1 \
+                --head development \
+                --title "Merge automático: development -> ambiente-1" \
+                --body "Merge automático gerado pelo GitHub Actions." \
+                || true)
+
+              if [ -n "$PR_URL" ]; then
+                gh pr merge "$PR_URL" --merge --admin || echo "Não foi possível mesclar automaticamente."
+              fi
+            else
+              echo "Nenhuma alteração para mesclar de development -> ambiente-1."
+            fi
+          else
+            echo "Branch ambiente-1 não existe no remoto."
+          fi
+
+      # DEVELOPMENT -> Ambiente-2
+      - name: Criar e mesclar PR da development -> ambiente-2
+        if: github.ref == 'refs/heads/development'
+        run: |
+          if git rev-parse origin/ambiente-2 >/dev/null 2>&1; then
+            if git log origin/ambiente-2..origin/development --oneline | grep .; then
+              PR_URL=$(gh pr create \
+                --base ambiente-2 \
+                --head development \
+                --title "Merge automático: development -> ambiente-2" \
+                --body "Merge automático gerado pelo GitHub Actions." \
+                || true)
+
+              if [ -n "$PR_URL" ]; then
+                gh pr merge "$PR_URL" --merge --admin || echo "Não foi possível mesclar automaticamente."
+              fi
+            else
+              echo "Nenhuma alteração para mesclar de development -> ambiente-2."
+            fi
+          else
+            echo "Branch ambiente-2 não existe no remoto."
+          fi
+
+      # DEVELOPMENT -> Ambiente-3
+      - name: Criar e mesclar PR da development -> ambiente-3
+        if: github.ref == 'refs/heads/development'
+        run: |
+          if git rev-parse origin/ambiente-3 >/dev/null 2>&1; then
+            if git log origin/ambiente-3..origin/development --oneline | grep .; then
+              PR_URL=$(gh pr create \
+                --base ambiente-3 \
+                --head development \
+                --title "Merge automático: development -> ambiente-3" \
+                --body "Merge automático gerado pelo GitHub Actions." \
+                || true)
+
+              if [ -n "$PR_URL" ]; then
+                gh pr merge "$PR_URL" --merge --admin || echo "Não foi possível mesclar automaticamente."
+              fi
+            else
+              echo "Nenhuma alteração para mesclar de development -> ambiente-3."
+            fi
+          else
+            echo "Branch ambiente-3 não existe no remoto."
+          fi
